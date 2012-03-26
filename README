@@ -1,0 +1,38 @@
+Musosphere seeks to display relationships between artists by mashing up data from the Twitter and Last.fm databases.
+
+INTRODUCTION
+The program is split into two main components. Fetch.rb downloads additional artist data into the database, while musosphere.rb displays the already-captured information. 
+
+The visualization is organized using a simple force-directed graph layout. The number of "similar artists" on Last.fm is used as an attractive force, while the number of followers on Twitter is used as a repulsive force (as well as being represented directly by the radius of the sphere). Twitter following is represented as a line connecting the two spheres.
+
+DEPENDENCIES
+Musosphere.rb relies on ruby-processing, which can be installed with this command:
+
+sudo gem install ruby-processing
+
+Musosphere.rb also requires the activerecord and activerecord-jdbcsqlite3-adapter gems, which must be installed within JRuby itself. Use the following commands to do so:
+
+jruby -S gem install activerecord
+jruby -S gem install activerecord-jdbcsqlite3-adapter
+
+Then the program can be run with the following command:
+
+rp5 run musosphere.rb --jruby
+
+Fetch.rb requires the twitter, lastfm, activerecord, sqlite3, and launchy gems. Execute the following commands before running it:
+
+sudo gem install twitter
+sudo gem install lastfm
+sudo gem install activerecord
+sudo gem install sqlite3
+sudo gem install launchy
+
+You will also need to create a file, "keys.rb", and populate it with your own API keys from Last.fm and Twitter; the format is as follows:
+
+LASTFM_API_KEY = "x"
+LASTFM_API_SECRET = "x"
+
+TWITTER_CONSUMER_KEY = "x"
+TWITTER_CONSUMER_SECRET = "x"
+TWITTER_OAUTH_TOKEN = "x"
+TWITTER_OAUTH_TOKEN_SECRET = "x"
