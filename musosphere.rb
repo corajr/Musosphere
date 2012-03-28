@@ -1,6 +1,13 @@
 #!/usr/bin/env ruby
 require 'rubygems'
 require 'active_record'
+require 'matrix'
+require 'java' 
+
+module JavaLang                    # create a namespace for java.lang
+  include_package "java.lang"      # we don't want to clash with Ruby Thread?
+end
+
 
 ActiveRecord::Base.establish_connection(
 	:adapter => "jdbcsqlite3",
@@ -51,12 +58,14 @@ class Vec
 end
 
 $spheres = {}
-distanceMultiplier = 30
 
 idToN = {}
 nToId = {}
 
 n = 0
+
+$coords = Matrix.build(artists.length, 3) { (rand(artists.length) - (artists.length / 2.0)) * 100 }
+
 
 artists.each do |artist|
 	a = ArtistSphere.new
@@ -66,82 +75,53 @@ artists.each do |artist|
 	a.followedByIds = artist.followedByIds
 	a.similarityHash = artist.similarityHash
 	if not a.followedByIds.nil?
-		a.r = a.followedByIds.length * 2
+		a.r = a.followedByIds.length * 0.01
 	else
-		a.r = 1
+		a.r = 0.01
 	end
 
-	a.pos = Vec.new((rand(artists.length) - artists.length/2) * distanceMultiplier,
-		(rand(artists.length) - artists.length/2) * distanceMultiplier,
-		(rand(artists.length) - artists.length/2) * distanceMultiplier)
-	a.velocity = Vec.new(0,0,0)
-
+	a.pos = Vec.new($coords[n, 0], $coords[n, 1], $coords[n, 2])
 	$spheres[a.id] = a
-
-	nToId[n] = a.id
 	idToN[a.id] = n
+	nToId[n] = a.id
+
 	n = n.succ
 end
 
-$timestep = 1
-$kineticEnergy = 0
-$deriv = 0
-$secondDeriv = 100
-$damping = 0.5
-$attractionConstant = 2
-$repulsionConstant = 0.05
+load 'smacof.rb'
+m = [] # dissimilarity matrix
 
-def repulsion(sphere1, sphere2)
-	charge = sphere1.r * sphere2.r # more followers == higher repulsion
-	r2 = sphere1.pos.distSquared(sphere2.pos)
-	return $repulsionConstant * charge / r2
+(0..artists.length - 1).each do |i|
+  row = []
+  (0..artists.length - 1).each do |j|
+    x = $spheres[nToId[i]].similarityHash[nToId[j]]
+    if not x.nil?
+      row << 100 - x
+    else
+      row << 0
+    end
+  end
+  m << row
 end
 
-def attraction(sphere1, sphere2)
-	if sphere1.similarityHash.has_key? sphere2.id
-		-1 * $attractionConstant * (sphere1.similarityHash[sphere2.id]/100) * (sphere1.pos.dist(sphere2.pos) - 30)
-	else
-		0
-	end
+$matrix = Matrix[*m]
+
+class ThreadImpl
+  include JavaLang::Runnable       # include interface as a 'module'
+  
+  attr_reader :runner   # instance variables
+  
+  def initialize
+    @runner = JavaLang::Thread.current_thread # get access to main thread
+#    puts "...in thread #{JavaLang::Thread.current_thread.get_name}"
+  end
+  
+  def run
+    smacof($matrix, $coords, 0.0001)
+#    puts "...in thread #{JavaLang::Thread.current_thread.get_name}"
+  end
 end
-
-def iterateSystem()
-	$kineticEnergy = 0
-	$spheres.each do |idA, sA|
-		netForce = Vec.new(0, 0, 0)	
-		$spheres.each do |idB, sB|
-			if idA == idB
-				next
-			else
-				netForce += ((sB.pos - sA.pos) * repulsion(sA, sB))
-				if not sA.followingIds.nil?
-					if sA.followingIds.include? idB
-						netForce += ((sB.pos - sA.pos) * attraction(sA, sB))
-					end
-				end
-			end
-		end
-		
-		sA.velocity = (sA.velocity + (netForce * $timestep)) * $damping
-		sA.pos += (sA.velocity * $timestep)
-		$kineticEnergy += (sA.r * sA.velocity.magSquared)
-	end
-end
-
-iterateSystem
-
-
-until $secondDeriv.abs < 10
-	$oldKineticEnergy = $kineticEnergy
-	$oldDeriv = $deriv
-	iterateSystem
-	$deriv = $kineticEnergy - $oldKineticEnergy
-	$secondDeriv = $deriv - $oldDeriv
-	puts $secondDeriv
-	puts $kineticEnergy
-end
-
-
+  
 class Spheres < Processing::App
 	load_libraries 'PeasyCam', 'opengl'
 	import 'peasy'
@@ -161,6 +141,11 @@ class Spheres < Processing::App
 	  size 640, 480, OPENGL
 	  configure_camera
 	  @labels = []
+    begin
+      thread0 = JavaLang::Thread.new(ThreadImpl.new).start
+    rescue 
+      puts $!
+    end
 	end
 	
 	def configure_camera
@@ -174,7 +159,6 @@ class Spheres < Processing::App
 		fill 255
 		noStroke
 		lights
-		
 
 		@labels.clear
 		$spheres.each do |id, s|
@@ -193,11 +177,12 @@ class Spheres < Processing::App
 			pop_matrix
 		end
 		
-		camera
+		@cam.beginHUD
 		@labels.each do |l|
 			fill 255, 0, 0
 			text l.text, l.x, l.y
 		end
+		@cam.endHUD
 	end
 end
 
