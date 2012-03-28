@@ -10,6 +10,12 @@ load 'keys.rb'
 
 REQUESTS_LIMIT = 20
 
+args = []
+ARGV.each do |a|
+  args << ARGV.shift
+end
+
+
 ActiveRecord::Base.establish_connection(
 	:adapter => "sqlite3",
 	:database => "test"
@@ -46,6 +52,28 @@ $twitter = Twitter.new
 
 $requestsMade = 0
 
+def addNewArtist(newArtist)
+  newRelatedArtists = $lastfm.artist.get_similar(newArtist).map{|a| a["name"]}.select{|a| not a.nil?}
+  users = $twitter.user_search(newArtist, :page => 1, :per_page => 1)
+  if not users.nil?
+    if not users[0].nil?
+      if users[0].verified
+        screen_name = users[0].screen_name
+        user_id = users[0].id
+        following = $twitter.friend_ids(user_id)
+        puts newArtist
+        puts screen_name
+      end
+    end
+  else
+    screen_name = nil
+    user_id = nil
+    following = nil
+  end
+  Artist.create(:name => newArtist, :twitterName => screen_name, :relatedArtists => newRelatedArtists, :user_id => user_id, :following => following)
+  $requestsMade += 1
+end
+
 def searchRelatedArtists(artist)
 	relatedArtists = Artist.where(:name => artist).first.relatedArtists
 	if relatedArtists.nil?
@@ -56,30 +84,18 @@ def searchRelatedArtists(artist)
 				break
 			end
 			if not Artist.exists?(:name => newArtist)
-				newRelatedArtists = $lastfm.artist.get_similar(newArtist).map{|a| a["name"]}.select{|a| not a.nil?}
-				users = $twitter.user_search(newArtist, :page => 1, :per_page => 1)
-				if not users.nil?
-					if not users[0].nil?
-						if users[0].verified
-							screen_name = users[0].screen_name
-							user_id = users[0].id
-							following = $twitter.friend_ids(user_id)
-							puts newArtist
-							puts screen_name
-						end
-					end
-				else
-					screen_name = nil
-					user_id = nil
-					following = nil
-				end
-				Artist.create(:name => newArtist, :twitterName => screen_name, :relatedArtists => newRelatedArtists, :user_id => user_id, :following => following)
-				$requestsMade += 1
+			  begin
+			    addNewArtist(newArtist)
+			  rescue
+			    p "Adding artist #{newArtist} failed."
+			  end
 			end
 		end
 	end
 end
 
+
+  
 def rebuildRelationships
 	allArtists = Artist.select("*")
 	
@@ -137,7 +153,14 @@ def rebuildRelationships
 	end
 end
 
-artists = Artist.select("name")
+
+artists = Artist.select("name").reverse
+
+# if there are arguments on the command-line, try to add them as artists
+# artists with a space should be encased in quotes
+args.each do |a|
+  addNewArtist(a)
+end
 
 artists.each do |artist|
 	searchRelatedArtists(artist.name)

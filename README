@@ -5,6 +5,14 @@ The program is split into two main components. Fetch.rb downloads additional art
 
 The visualization is organized using the Stress MAjorization of a COmplex Function (SMACOF) algorithm for multidimensional scaling. Artists that share more "similar artists" on Last.fm are grouped closer together. Twitter relationships is represented as a line connecting two spheres; artists with a larger Twitter following (amongst the artists here) have a larger radius.
 
+HOW TO RUN
+To display:
+rp5 run musosphere.rb --jruby
+
+To fetch more automatically (note: requires API keys, see below):
+./fetch.rb
+(optionally: ./fetch.rb "Artist Name" to get data for a particular artist and associates)
+
 DEPENDENCIES
 Musosphere.rb needs Ruby 1.9.3 to run, for the updated built-in Matrix module. It also requires ruby-processing, which can be installed with this command:
 
