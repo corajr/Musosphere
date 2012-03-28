@@ -3,10 +3,10 @@ Musosphere seeks to display relationships between artists by mashing up data fro
 INTRODUCTION
 The program is split into two main components. Fetch.rb downloads additional artist data into the database, while musosphere.rb displays the already-captured information. 
 
-The visualization is organized using a simple force-directed graph layout. The number of "similar artists" on Last.fm is used as an attractive force, while the number of followers on Twitter is used as a repulsive force (as well as being represented directly by the radius of the sphere). Twitter following is represented as a line connecting the two spheres.
+The visualization is organized using the Stress MAjorization of a COmplex Function (SMACOF) algorithm for multidimensional scaling. Artists that share more "similar artists" on Last.fm are grouped closer together. Twitter relationships is represented as a line connecting two spheres; artists with a larger Twitter following (amongst the artists here) have a larger radius.
 
 DEPENDENCIES
-Musosphere.rb relies on ruby-processing, which can be installed with this command:
+Musosphere.rb needs Ruby 1.9.3 to run, for the updated built-in Matrix module. It also requires ruby-processing, which can be installed with this command:
 
 sudo gem install ruby-processing
 
