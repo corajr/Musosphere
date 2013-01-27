@@ -1,0 +1,5 @@
+keys.rb
+*.bak
+i.rb
+.DS_Store*
+old/
